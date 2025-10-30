@@ -1,21 +1,8 @@
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Header from '@/components/Header';
 import { MapPin } from 'lucide-react';
-
-// Fix for default marker icon issue in React Leaflet
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-
-// @ts-ignore
-delete Icon.Default.prototype._getIconUrl;
-Icon.Default.mergeOptions({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-});
 
 const recyclingCenters = [
   {
@@ -49,7 +36,39 @@ const recyclingCenters = [
 ];
 
 const EWasteLocator = () => {
+  const [isClient, setIsClient] = useState(false);
   const centerPosition: [number, number] = [37.7749, -122.4194];
+
+  useEffect(() => {
+    setIsClient(true);
+    // Fix for default marker icon issue in React Leaflet
+    const L = require('leaflet');
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+      iconUrl: require('leaflet/dist/images/marker-icon.png'),
+      shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+    });
+  }, []);
+
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-eco-light/20 to-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="mb-8 animate-fade-in">
+            <div className="flex items-center gap-3 mb-2">
+              <MapPin className="w-8 h-8 text-eco-primary" />
+              <h1 className="text-4xl font-bold text-foreground">E-Waste Recycling Centers</h1>
+            </div>
+            <p className="text-muted-foreground">
+              Loading map...
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-eco-light/20 to-background">
