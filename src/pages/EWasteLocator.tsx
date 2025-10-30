@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { useEffect, useState, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -40,38 +39,48 @@ const recyclingCenters = [
 ];
 
 const EWasteLocator = () => {
-  const [isClient, setIsClient] = useState(false);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
   const centerPosition: [number, number] = [37.7749, -122.4194];
 
   useEffect(() => {
-    setIsClient(true);
-    // Fix for default marker icon issue in React Leaflet
+    // Fix for default marker icon issue in Leaflet
     delete (L.Icon.Default.prototype as any)._getIconUrl;
     L.Icon.Default.mergeOptions({
       iconRetinaUrl: markerIcon2x,
       iconUrl: markerIcon,
       shadowUrl: markerShadow,
     });
-  }, []);
 
-  if (!isClient) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-eco-light/20 to-background">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="mb-8 animate-fade-in">
-            <div className="flex items-center gap-3 mb-2">
-              <MapPin className="w-8 h-8 text-eco-primary" />
-              <h1 className="text-4xl font-bold text-foreground">E-Waste Recycling Centers</h1>
-            </div>
-            <p className="text-muted-foreground">
-              Loading map...
-            </p>
+    // Initialize map only if not already initialized
+    if (mapRef.current && !mapInstanceRef.current) {
+      mapInstanceRef.current = L.map(mapRef.current).setView(centerPosition, 13);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(mapInstanceRef.current);
+
+      // Add markers for each recycling center
+      recyclingCenters.forEach((center) => {
+        const marker = L.marker(center.coordinates).addTo(mapInstanceRef.current!);
+        marker.bindPopup(`
+          <div class="p-2">
+            <h3 class="font-bold text-eco-primary mb-1">${center.name}</h3>
+            <p class="text-sm text-muted-foreground mb-1">${center.address}</p>
+            <p class="text-sm text-muted-foreground">${center.phone}</p>
           </div>
-        </main>
-      </div>
-    );
-  }
+        `);
+      });
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-eco-light/20 to-background">
@@ -91,30 +100,7 @@ const EWasteLocator = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Map Section */}
           <div className="lg:col-span-2 rounded-xl overflow-hidden shadow-eco border border-eco-primary/20 animate-slide-up">
-            <MapContainer
-              // @ts-ignore - React Leaflet props are correct
-              center={centerPosition}
-              zoom={13}
-              style={{ height: '600px', width: '100%' }}
-              className="z-0"
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                // @ts-ignore - React Leaflet props are correct
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              />
-              {recyclingCenters.map((center) => (
-                <Marker key={center.id} position={center.coordinates}>
-                  <Popup>
-                    <div className="p-2">
-                      <h3 className="font-bold text-eco-primary mb-1">{center.name}</h3>
-                      <p className="text-sm text-muted-foreground mb-1">{center.address}</p>
-                      <p className="text-sm text-muted-foreground">{center.phone}</p>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
+            <div ref={mapRef} style={{ height: '600px', width: '100%' }} />
           </div>
 
           {/* Centers List */}
